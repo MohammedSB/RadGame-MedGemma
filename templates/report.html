@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RadGame</title>
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='images/logo.ico') }}"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/report.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/components.css') }}"
+    />
+    <style>
+      #crimsonTooltip:hover > span { visibility: visible !important; opacity: 1 !important; }
+    </style>
+  </head>
+
+  <body class="report-page">
+    <div class="container">
+      <header class="header">
+        <a
+          href="/main-menu"
+          class="rg-btn rg-btn--back rg-float-left"
+          id="back-to-main"
+          >Back to Main Menu</a
+        >
+        <h1><span style="font-weight: 700">RadGame Report</span></h1>
+        <p>Practice writing radiology reports with AI-powered evaluation using MedGemma </p>
+      </header>
+
+      <div class="main-container">
+        <div class="image-pane">
+          {% include 'partials/report_image_pane.html' %}
+        </div>
+        <div class="report-pane">
+          <div class="report-section">
+            <h4>Report Information</h4>
+            <div
+              id="patientInfo"
+              style="
+                margin-bottom: 0.75rem;
+                font-size: 0.9rem;
+                background: #f8f9fa;
+                padding: 0.6rem 0.75rem;
+                border: 1px solid #e2e6ea;
+                border-radius: 8px;
+                line-height: 1.25;
+              "
+            >
+              <span
+                id="pi-age"
+                style="
+                  font-weight: 600;
+                  color: #8b0000;
+                  display: inline-block;
+                  margin-right: 1rem;
+                "
+                >Age: —</span
+              >
+              <span
+                id="pi-indication"
+                style="color: #444; display: inline-block; max-width: 100%"
+                >Indication:
+                <em style="font-style: normal; color: #666">—</em></span
+              >
+            </div>
+
+            {% include 'partials/report_findings_field.html' %}
+
+            <button class="submit-btn" id="submitReport">Submit Report</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRIMSON Score Results Modal -->
+      <div class="modal fade" id="crimsonScoreModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div
+            class="modal-content"
+            style="
+              border-radius: 16px;
+              border: none;
+              box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            "
+          >
+            <div
+              class="modal-header"
+              style="
+                background: linear-gradient(135deg, #8b0000 0%, #800020 100%);
+                color: white;
+                border-radius: 16px 16px 0 0;
+                border: none;
+              "
+            >
+              <h5 class="modal-title" style="font-weight: 600">
+                Radiology Report Analysis
+              </h5>
+              <button
+                type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body" style="padding: 2rem">
+              <!-- CRIMSON Score Section (Full Width) -->
+              <div class="text-center mb-4">
+                <h4 style="color: #8B0000; font-weight: 700">
+                  CRIMSON Score:
+                  <span
+                    id="crimsonScoreValue"
+                    style="color: #333; font-weight: 800"
+                    >--</span
+                  >
+                  <span id="crimsonTooltip" style="display:inline-block; cursor:help; margin-left:6px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#8B0000; color:#fff; font-size:0.7rem; font-weight:700; vertical-align:middle; position:relative;" title="">?<span style="visibility:hidden; opacity:0; transition:opacity 0.2s; position:absolute; top:130%; left:50%; transform:translateX(-50%); width:320px; background:#1a1a2e; color:#f0f0f0; font-size:0.75rem; font-weight:400; padding:0.75rem 1rem; border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.25); text-align:left; line-height:1.5; z-index:9999; pointer-events:none;"><strong style='color:#e8c4c4;'>CRIMSON Score</strong> (−1 to +1) measures radiology report accuracy using clinically-weighted error penalties.<br><br><strong style='color:#e8c4c4;'>How it works:</strong><br>• A score <strong>above 0</strong> means matched findings outweigh errors (accounting for clinical severity).<br>• A score <strong>below 0</strong> means errors outweigh matched findings.<br>• A score of <strong>+1</strong> is a perfect report with no errors.<br><br><strong style='color:#e8c4c4;'>Error types penalised:</strong><br>• <em>False findings</em> — reported but not in reference<br>• <em>Missing findings</em> — in reference but not reported<br>• <em>Attribute errors</em> — wrong location, severity, etc.<br><br>Penalties scale with <strong style='color:#e8c4c4;'>clinical significance</strong>: urgent findings are weighted most heavily.<br><br><span style='font-size:0.68rem; color:#aaa;'>Raissi et al., "CRIMSON," 2025.</span></span></span>
+                </h4>
+                <div id="crimsonScoreBar" style="display:none; margin: 0.75rem auto; max-width: 400px;">
+                  <div style="position:relative; height:18px; background: linear-gradient(to right, #800020 0%, #b5485d 30%, #d4a574 50%, #6b8e6b 75%, #2e6b3a 100%); border-radius:9px; overflow:visible;">
+                    <div id="crimsonScoreMarker" style="position:absolute; top:-3px; width:4px; height:24px; background:#333; border-radius:2px; transition: left 0.3s;"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#888; margin-top:2px;">
+                    <span>-1</span><span>0</span><span>1</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ground Truth -->
+              <div class="mb-4" id="groundTruthWrap" style="display: none">
+                <h5 style="color: #8b0000; font-weight: 600; margin-bottom: 0.75rem;">
+                  Ground Truth Report Findings
+                </h5>
+                <div class="row" style="gap: 0.5rem 0">
+                  <div class="col-12">
+                    <div id="gtFindings" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 1rem; white-space: pre-wrap;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Summary (GPT mode) -->
+              <div class="mb-4" id="summarySection">
+                <h5 style="color: #8B0000; font-weight: 600; margin-bottom: 1rem">Summary</h5>
+                <div id="crimsonSummary" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 1.5rem; line-height: 1.6;"></div>
+              </div>
+
+              <!-- ========== CRIMSON Error Categories (MedGemma mode) ========== -->
+              <div id="crimsonErrorsSection" style="display: none;">
+
+                <!-- 1) Matched Findings -->
+                <div class="mb-4" id="matchedFindingsWrap">
+                  <h5 style="color: #2e6b3a; font-weight: 600; margin-bottom: 0.5rem;">
+                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                      Matched Findings
+                      <span class="badge" id="cntMatched" style="font-size:0.75rem; background:#2e6b3a; color:#fff;">0</span>
+                    </span>
+                  </h5>
+                  <p style="font-size:0.82rem; color:#666; margin-bottom:0.5rem;">Findings you correctly identified that match the radiologist's report.</p>
+                  <div id="matchedFindingsList"></div>
+                  <div id="matchedFindingsEmpty" style="display:none; font-size:0.82rem; color:#999; font-style:italic; padding:0.5rem 0;">No matched findings.</div>
+                </div>
+
+                <!-- 2) Attribute Errors -->
+                <div class="mb-4" id="attrErrorsWrap">
+                  <h5 style="color: #8B0000; font-weight: 600; margin-bottom: 0.5rem;">
+                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                      Attribute Errors
+                      <span class="badge" id="cntAttr" style="font-size:0.75rem; background:#555; color:#fff;">0</span>
+                    </span>
+                  </h5>
+                  <p style="font-size:0.82rem; color:#666; margin-bottom:0.5rem;">Findings you identified but with incorrect or incomplete attributes (location, severity, descriptors, etc.).</p>
+                  <div id="attrErrorsList"></div>
+                  <div id="attrErrorsEmpty" style="display:none; font-size:0.82rem; color:#999; font-style:italic; padding:0.5rem 0;">No attribute errors.</div>
+                </div>
+
+                <!-- 3) False Findings -->
+                <div class="mb-4" id="falseFindingsWrap">
+                  <h5 style="color: #8B0000; font-weight: 600; margin-bottom: 0.5rem;">
+                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                      False Findings
+                      <span class="badge" id="cntFalse" style="font-size:0.75rem; background:#8B0000; color:#fff;">0</span>
+                    </span>
+                  </h5>
+                  <p style="font-size:0.82rem; color:#666; margin-bottom:0.5rem;">Findings in your report that are <strong>not present</strong> in the radiologist's report.</p>
+                  <div id="falseFindingsList"></div>
+                  <div id="falseFindingsEmpty" style="display:none; font-size:0.82rem; color:#999; font-style:italic; padding:0.5rem 0;">No false findings.</div>
+                </div>
+
+                <!-- 4) Missing Findings -->
+                <div class="mb-4" id="missingFindingsWrap">
+                  <h5 style="color: #8B0000; font-weight: 600; margin-bottom: 0.5rem;">
+                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                      Missing Findings
+                      <span class="badge" id="cntMissing" style="font-size:0.75rem; background:#a0344a; color:#fff;">0</span>
+                    </span>
+                  </h5>
+                  <p style="font-size:0.82rem; color:#666; margin-bottom:0.5rem;">Findings in the radiologist's report that you <strong>did not include</strong> in yours.</p>
+                  <div id="missingFindingsList"></div>
+                  <div id="missingFindingsEmpty" style="display:none; font-size:0.82rem; color:#999; font-style:italic; padding:0.5rem 0;">No missing findings.</div>
+                </div>
+              </div>
+
+              <!-- ========== Legacy error buckets (GPT mode) ========== -->
+              <div class="mb-4" id="errorBuckets" style="display: none">
+                <h5 style="color: #8b0000; font-weight: 600; margin-bottom: 0.75rem;">Error Types</h5>
+                <div class="row" style="gap: 0.5rem 0">
+                  <div class="col-md-6">
+                    <h6 style="margin: 0.4rem 0">a) False positive findings <span class="count badge bg-secondary ms-1" id="cntA">0</span></h6>
+                    <ul id="errA" style="padding-left: 1.2rem"></ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 style="margin: 0.4rem 0">b) Missing findings <span class="count badge bg-secondary ms-1" id="cntB">0</span></h6>
+                    <ul id="errB" style="padding-left: 1.2rem"></ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 style="margin: 0.4rem 0">c) Location/position errors <span class="count badge bg-secondary ms-1" id="cntC">0</span></h6>
+                    <ul id="errC" style="padding-left: 1.2rem"></ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 style="margin: 0.4rem 0">d) Severity misassessment <span class="count badge bg-secondary ms-1" id="cntD">0</span></h6>
+                    <ul id="errD" style="padding-left: 1.2rem"></ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Matched findings (legacy GPT mode) -->
+              <div class="mb-2" id="matchedFindingsWrapLegacy" style="display: none">
+                <h5 style="color: #2e6b3a; font-weight: 600; margin-bottom: 0.5rem;">
+                  Matched Findings
+                </h5>
+                <ul id="matchedFindings" style="padding-left: 1.2rem;"></ul>
+              </div>
+            </div>
+            <div
+              class="modal-footer"
+              style="border-top: 1px solid #e9ecef; padding: 1.5rem 2rem"
+            >
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+                style="border-radius: 8px; padding: 0.5rem 1.5rem"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                class="btn"
+                id="nextCase"
+                style="
+                  background-color: #8b0000;
+                  color: white;
+                  border-radius: 8px;
+                  padding: 0.5rem 1.5rem;
+                  font-weight: 600;
+                "
+              >
+                Next Case
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/report_zoom.js') }}"></script>
+    <script>
+      window.RUN_ID = "{{ run_id }}";
+      window.ACCESS_CODE = "{{ access_code }}";
+      document.addEventListener("DOMContentLoaded", function () {
+        // Auto-pause report timer when navigating back to main menu
+        try {
+          const backLink = document.getElementById("back-to-main");
+          if (backLink) {
+            backLink.addEventListener("click", function (e) {
+              // Only intervene if report timer exists
+              try {
+                const code = (window.ACCESS_CODE || "anon").toString();
+                const rk = (s) => `rg_${code}_report_${s}`;
+                // If not already paused, set pause markers
+                if (localStorage.getItem(rk("paused")) !== "true") {
+                  localStorage.setItem(rk("paused"), "true");
+                  localStorage.setItem(
+                    rk("pause_start"),
+                    Date.now().toString()
+                  );
+                  localStorage.setItem(rk("auto_nav_pause"), "1");
+                }
+              } catch (_) {}
+              // Allow navigation to continue immediately (no preventDefault)
+            });
+          }
+        } catch (_) {}
+        const imageContainer = document.getElementById("imageContainer");
+        // Initialize shared zoom/pan
+        try {
+          initReportZoom();
+        } catch (_) {}
+        const findingsText = document.getElementById("findingsText");
+        const submitButton = document.getElementById("submitReport");
+        const crimsonScoreModal = new bootstrap.Modal(
+          document.getElementById("crimsonScoreModal")
+        );
+        const nextCaseButton = document.getElementById("nextCase");
+        let hasSubmitted = false;
+        let submittingNow = false; // debounce flag
+        let lastAnalysis = null;
+
+        // Defensive: if user is guided/passive, redirect to guided page
+        fetch("/api/user/version")
+          .then((r) => r.json())
+          .then((v) => {
+            if (v.report_version === "guided") {
+              window.location.replace("/report"); // server will render guided template
+            }
+          })
+          .catch(() => {});
+
+        // Load images for the current case
+        let currentCaseId = null;
+        fetch("/api/report/case").then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            if (data.error === "practice_complete") {
+              // Redirect immediately to main menu if cap reached
+              window.location.replace("/main-menu");
+              return;
+            }
+            throw data;
+          }
+          currentCaseId = data.case_id; // Store the case_id
+          // (Removed case counter display in practice mode per requirement)
+          // Populate patient info
+          try {
+            const ageEl = document.getElementById("pi-age");
+            const indEl = document.getElementById("pi-indication");
+            if (ageEl)
+              ageEl.textContent = `Age: ${data.age != null ? data.age : "—"}`;
+            if (indEl) {
+              const indText = (data.indication || "").trim() || "—";
+              indEl.innerHTML = `Indication: <em style="font-style:normal; color:#222;">${indText
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")}</em>`;
+            }
+          } catch (_) {}
+          (data.images || []).forEach((imagePath) => {
+            const imgDiv = document.createElement("div");
+            imgDiv.className = "image-item";
+            imgDiv.innerHTML = `<img src="/report/image/${encodeURIComponent(
+              imagePath
+            )}" alt="Medical image">`;
+            imageContainer.appendChild(imgDiv);
+          });
+        });
+
+        // ========== Populate the feedback modal (both GPT & MedGemma modes) ==========
+        function _populateModal(data) {
+          const isCrimson = data.scorer === 'medgemma' && data.crimson;
+
+          // ---- Score display ----
+          const scoreEl = document.getElementById('crimsonScoreValue');
+          const barWrap = document.getElementById('crimsonScoreBar');
+          const marker  = document.getElementById('crimsonScoreMarker');
+          if (isCrimson) {
+            const cs = parseFloat(data.crimson.crimson_score);
+            scoreEl.textContent = cs.toFixed(2);
+            // Position marker on -1..+1 bar
+            const pct = ((cs + 1) / 2) * 100;
+            marker.style.left = `calc(${pct}% - 2px)`;
+            barWrap.style.display = 'block';
+          } else {
+            scoreEl.textContent = `${(data.green_score * 100).toFixed(0)}%`;
+            barWrap.style.display = 'none';
+          }
+
+          // Save recent scores for minibar
+          try {
+            const code = (window.ACCESS_CODE || 'anon').toString();
+            const rk = s => `rg_${code}_report_${s}`;
+            let recent = JSON.parse(localStorage.getItem(rk('recent_scores')) || '[]');
+            if (!Array.isArray(recent)) recent = [];
+            const scoreNum = isCrimson ? parseFloat(data.crimson.crimson_score) : parseFloat((data.green_score * 100).toFixed(0));
+            recent.push({g: scoreNum, t: Date.now()});
+            if (recent.length > 5) recent = recent.slice(-5);
+            localStorage.setItem(rk('recent_scores'), JSON.stringify(recent));
+          } catch(e) {}
+
+          // ---- Ground Truth ----
+          const gtWrap = document.getElementById('groundTruthWrap');
+          const gtf = document.getElementById('gtFindings');
+          if (data.ground_truth && data.ground_truth.findings) {
+            if (gtf) gtf.textContent = data.ground_truth.findings;
+            if (gtWrap) gtWrap.style.display = 'block';
+          } else {
+            if (gtWrap) gtWrap.style.display = 'none';
+          }
+
+          // ---- Summary (GPT mode only) ----
+          const summarySection = document.getElementById('summarySection');
+          const crimsonSummary = document.getElementById('crimsonSummary');
+          if (!isCrimson && data.summary) {
+            crimsonSummary.innerHTML = `<p>${data.summary}</p>`;
+            summarySection.style.display = 'block';
+          } else {
+            summarySection.style.display = 'none';
+          }
+
+          // ---- CRIMSON error categories (MedGemma mode) ----
+          const crimsonSection = document.getElementById('crimsonErrorsSection');
+          if (isCrimson) {
+            crimsonSection.style.display = 'block';
+            const c = data.crimson;
+            const sigBadge = (sig) => {
+              const colors = {
+                urgent: '#8B0000',
+                actionable_not_urgent: '#a0344a',
+                not_actionable_not_urgent: '#6b7280',
+                benign_expected: '#2e6b3a',
+              };
+              const bg = colors[sig] || '#888';
+              const label = (sig || 'unknown').replace(/_/g, ' ');
+              return `<span style="display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.72rem; color:#fff; background:${bg}; margin-left:6px;">${label}</span>`;
+            };
+
+            // False Findings
+            const ffList = document.getElementById('falseFindingsList');
+            const ffEmpty = document.getElementById('falseFindingsEmpty');
+            const cntFalse = document.getElementById('cntFalse');
+            const ff = c.false_findings || [];
+            cntFalse.textContent = String(ff.length);
+            ffList.innerHTML = '';
+            if (ff.length) {
+              ffEmpty.style.display = 'none';
+              ff.forEach(f => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#fdf2f2; border:1px solid #d4a0a0; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.4rem;';
+                card.innerHTML = `<span style="font-weight:500;">${_esc(f.finding)}</span>${sigBadge(f.clinical_significance)}`;
+                ffList.appendChild(card);
+              });
+            } else {
+              ffEmpty.style.display = 'block';
+            }
+
+            // Missing Findings
+            const mfList = document.getElementById('missingFindingsList');
+            const mfEmpty = document.getElementById('missingFindingsEmpty');
+            const cntMissing = document.getElementById('cntMissing');
+            const mf = c.missing_findings || [];
+            cntMissing.textContent = String(mf.length);
+            mfList.innerHTML = '';
+            if (mf.length) {
+              mfEmpty.style.display = 'none';
+              mf.forEach(f => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#fef6f0; border:1px solid #d4a0a0; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.4rem;';
+                card.innerHTML = `<span style="font-weight:500;">${_esc(f.finding)}</span>${sigBadge(f.clinical_significance)}`;
+                mfList.appendChild(card);
+              });
+            } else {
+              mfEmpty.style.display = 'block';
+            }
+
+            // Attribute Errors
+            const aeList = document.getElementById('attrErrorsList');
+            const aeEmpty = document.getElementById('attrErrorsEmpty');
+            const cntAttr = document.getElementById('cntAttr');
+            const ae = c.attribute_errors || [];
+            cntAttr.textContent = String(ae.length);
+            aeList.innerHTML = '';
+            if (ae.length) {
+              aeEmpty.style.display = 'none';
+              ae.forEach(e => {
+                const sevColor = e.severity === 'significant' ? '#8B0000' : '#888';
+                const typeTags = (e.error_types || []).map(t =>
+                  `<span style="display:inline-block; padding:1px 6px; border-radius:3px; font-size:0.7rem; background:#f0e6e6; color:#8B0000; margin-right:4px;">${_esc(t)}</span>`
+                ).join('');
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#f8f5f5; border:1px solid #e0d5d5; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.4rem;';
+                card.innerHTML = `
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:600; font-size:0.85rem;">Severity: <span style="color:${sevColor}; text-transform:capitalize;">${_esc(e.severity || 'unknown')}</span></span>
+                    <span>${typeTags}</span>
+                  </div>
+                  <div style="font-size:0.82rem; margin-bottom:4px; padding:4px 8px; background:#fff; border-radius:4px;"><span style="color:#2e6b3a; font-weight:600; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.3px;">Radiologist</span><br>${_esc(e.ref_finding)}</div>
+                  <div style="font-size:0.82rem; margin-bottom:2px; padding:4px 8px; background:#fff; border-radius:4px;"><span style="color:#1a5276; font-weight:600; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.3px;">Your Report</span><br>${_esc(e.pred_finding)}</div>
+                  ${e.explanation ? `<div style="font-size:0.8rem; color:#555; font-style:italic; margin-top:4px;">${_esc(e.explanation)}</div>` : ''}
+                `;
+                aeList.appendChild(card);
+              });
+            } else {
+              aeEmpty.style.display = 'block';
+            }
+
+            // Matched Findings (inside CRIMSON section)
+            const mlistNew = document.getElementById('matchedFindingsList');
+            const mEmpty = document.getElementById('matchedFindingsEmpty');
+            const cntMatched = document.getElementById('cntMatched');
+            const matchedArr = c.matched_findings || [];
+            cntMatched.textContent = String(matchedArr.length);
+            mlistNew.innerHTML = '';
+            if (matchedArr.length) {
+              mEmpty.style.display = 'none';
+              matchedArr.forEach(m => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#f0f5f0; border:1px solid #a5c6a7; border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.45rem; font-size:0.82rem;';
+                card.innerHTML = `
+                  <div style="display:flex; gap:0.5rem; align-items:stretch;">
+                    <div style="flex:1; padding:5px 10px; background:#e8f5e9; border-radius:5px;">
+                      <span style="color:#2e6b3a; font-weight:600; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px;">Radiologist</span><br>
+                      <span style="font-size:0.82rem;">${_esc(m.ref_finding)}</span>
+                    </div>
+                    <div style="flex:1; padding:5px 10px; background:#e3f2fd; border-radius:5px;">
+                      <span style="color:#1a5276; font-weight:600; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px;">Your Report</span><br>
+                      <span style="font-size:0.82rem;">${_esc(m.pred_finding)}</span>
+                    </div>
+                  </div>`;
+                mlistNew.appendChild(card);
+              });
+            } else {
+              mEmpty.style.display = 'block';
+            }
+          } else {
+            crimsonSection.style.display = 'none';
+          }
+
+          // ---- Legacy error buckets (GPT mode) ----
+          const legacyWrap = document.getElementById('errorBuckets');
+          if (!isCrimson) {
+            const buckets = data.errors || {};
+            const setList = (id, items) => {
+              const ul = document.getElementById(id);
+              if (!ul) return;
+              ul.innerHTML = '';
+              (items || []).forEach(t => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+            };
+            setList('errA', buckets.a); setList('errB', buckets.b); setList('errC', buckets.c); setList('errD', buckets.d);
+            const setCnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = String((n || []).length); };
+            setCnt('cntA', buckets.a); setCnt('cntB', buckets.b); setCnt('cntC', buckets.c); setCnt('cntD', buckets.d);
+            const hasAny = ['a','b','c','d'].some(k => (buckets[k] || []).length);
+            legacyWrap.style.display = hasAny ? 'block' : 'none';
+          } else {
+            legacyWrap.style.display = 'none';
+          }
+
+          // ---- Legacy Matched Findings (GPT mode) ----
+          const mwrapLegacy = document.getElementById('matchedFindingsWrapLegacy');
+          const mlistOld = document.getElementById('matchedFindings');
+          if (!isCrimson) {
+            const mArr = data.matched_findings || [];
+            mlistOld.innerHTML = '';
+            if (mArr.length) {
+              mwrapLegacy.style.display = 'block';
+              mArr.forEach(t => { const li = document.createElement('li'); li.textContent = t; mlistOld.appendChild(li); });
+            } else {
+              mwrapLegacy.style.display = 'none';
+            }
+          } else {
+            mwrapLegacy.style.display = 'none';
+          }
+        }
+
+        // Escape HTML for safe rendering
+        function _esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+        // Handle report submission
+        submitButton.addEventListener("click", function () {
+          if (submittingNow) return; // guard multiple rapid clicks
+          // If already submitted, just reopen the modal with the cached analysis
+          if (hasSubmitted && lastAnalysis) {
+            // Re-populate from cached data and show
+            _populateModal(lastAnalysis);
+            crimsonScoreModal.show();
+            return;
+          }
+          const report = {
+            case_id: currentCaseId, // Include the case_id in the submission
+            findings: findingsText.value,
+            selectedImages: Array.from(
+              document.querySelectorAll(".image-item img")
+            ).map((img) => img.src),
+          };
+
+          // Disable button immediately and mark submitting
+          submittingNow = true;
+          submitButton.disabled = true;
+          submitButton.classList.add("disabled");
+          submitButton.textContent = "Submitting...";
+
+          fetch("/api/report/submit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(
+              (function () {
+                // Attach per-case time (since last checkpoint) mirroring localization logic
+                try {
+                  const code = (window.ACCESS_CODE || "anon").toString();
+                  const rk = (s) => `rg_${code}_report_${s}`;
+                  const start =
+                    parseInt(localStorage.getItem(rk("session_start"))) ||
+                    Date.now();
+                  const paused = localStorage.getItem(rk("paused")) === "true";
+                  const pstart =
+                    parseInt(localStorage.getItem(rk("pause_start"))) || 0;
+                  const acc =
+                    parseInt(
+                      localStorage.getItem(rk("accumulated_pause_time"))
+                    ) || 0;
+                  const elapsed = paused
+                    ? pstart - start - acc
+                    : Date.now() - start - acc;
+                  report.time_spent_ms = Math.max(0, elapsed);
+                } catch (e) {
+                  report.time_spent_ms = 0;
+                }
+                return report;
+              })()
+            ),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                return response.json().then((err) => Promise.reject(err));
+              }
+              return response.json();
+            })
+            .then((data) => {
+              // Cache the first analysis and switch button to View mode
+              lastAnalysis = data;
+              hasSubmitted = true;
+              submitButton.textContent = "View Report";
+              submitButton.disabled = false; // allow viewing
+              submittingNow = false;
+              // Display score results via shared helper
+              _populateModal(data);
+
+              crimsonScoreModal.show();
+            })
+            .catch((error) => {
+              alert(
+                "Error submitting report: " + (error.error || "Unknown error")
+              );
+              // Re-enable to allow retry
+              submittingNow = false;
+              submitButton.disabled = false;
+              submitButton.classList.remove("disabled");
+              submitButton.textContent = "Submit Report";
+            });
+        });
+
+        // Handle next case button
+        nextCaseButton.addEventListener("click", function () {
+          if (nextCaseButton.disabled) return;
+          // Checkpoint (adds current elapsed to base & resets timer window)
+          try {
+            if (window.checkpointReportTimer) window.checkpointReportTimer();
+          } catch (e) {}
+          // Clear form and load next case
+          findingsText.value = "";
+          imageContainer.innerHTML = "";
+          crimsonScoreModal.hide();
+          // Fetch next case explicitly so we can detect cap before reload
+          fetch("/api/report/case")
+            .then(async (r) => {
+              const d = await r.json();
+              return { ok: r.ok, data: d };
+            })
+            .then((res) => {
+              if (!res.ok && res.data.error === "practice_complete") {
+                window.location.replace("/main-menu");
+                return;
+              }
+              if (!res.ok) {
+                alert("Error loading next case");
+                return;
+              }
+              // Successful -> reload to show new case
+              setTimeout(() => location.reload(), 50);
+            })
+            .catch(() => {
+              alert("Network error");
+            });
+        });
+      });
+    </script>
+    <script src="{{ url_for('static', filename='js/annotation.js') }}"></script>
+  </body>
+</html>

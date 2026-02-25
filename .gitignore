@@ -1,0 +1,33 @@
+# Secrets & credentials
+secretcodes.py
+CRIMSON/api_secrets.py
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Database
+instance/
+*.db
+
+# Large data / image directories (download separately)
+local_sampled/
+rex_sampled_additional_cases/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug outputs
+medgemma/overlay_debug/
+.DS_StoreCRIMSON/
+CRIMSON/finetuning/logs/

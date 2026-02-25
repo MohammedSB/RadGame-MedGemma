@@ -1,0 +1,11 @@
+# Core web application
+Flask==3.0.2
+Flask-SQLAlchemy==3.1.1
+shortuuid==1.0.11
+pandas==2.2.1
+Pillow
+
+torch
+transformers
+peft
+accelerate
