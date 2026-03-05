@@ -130,6 +130,27 @@ def _generate(prompt: str, max_new_tokens: int = 4096) -> str:
     return _tokenizer.decode(out[0][input_ids.shape[1]:], skip_special_tokens=True)
 
 
+def _generate_hf_endpoint(prompt: str, max_new_tokens: int = 4096,
+                          endpoint_url: str = "", token: str = "") -> str:
+    """Call a Hugging Face Inference Endpoint for generation."""
+    from huggingface_hub import InferenceClient
+
+    url = endpoint_url or _CFG_HF_ENDPOINT_URL
+    api_token = token or _CFG_HF_TOKEN
+    if not url:
+        raise RuntimeError("MEDGEMMA_HF_ENDPOINT_URL is not set.")
+
+    # Timeout must be long enough for cold-start from scale-to-zero (~10 min)
+    client = InferenceClient(model=url, token=api_token or None, timeout=600)
+    response = client.text_generation(
+        prompt,
+        max_new_tokens=max_new_tokens,
+        temperature=0.01,  # TGI doesn't allow exactly 0
+        return_full_text=False,
+    )
+    return response
+
+
 def _generate_vllm(prompt: str, max_new_tokens: int = 4096,
                    vllm_url: str = "", model_name: str = "") -> str:
     """Call a vLLM OpenAI-compatible server for generation."""
@@ -269,6 +290,8 @@ try:
     from config import MEDGEMMA_BACKEND as _CFG_BACKEND
     from config import MEDGEMMA_VLLM_URL as _CFG_VLLM_URL
     from config import MEDGEMMA_VLLM_MODEL as _CFG_VLLM_MODEL
+    from config import MEDGEMMA_HF_ENDPOINT_URL as _CFG_HF_ENDPOINT_URL
+    from config import MEDGEMMA_HF_TOKEN as _CFG_HF_TOKEN
 except ImportError:
     _CFG_MODEL_ID = "google/medgemma-4b-it"
     _CFG_LORA_PATH = ""
@@ -276,6 +299,8 @@ except ImportError:
     _CFG_BACKEND = "transformers"
     _CFG_VLLM_URL = "http://localhost:8000/v1"
     _CFG_VLLM_MODEL = ""
+    _CFG_HF_ENDPOINT_URL = ""
+    _CFG_HF_TOKEN = ""
 
 
 def evaluate_report(
@@ -307,7 +332,7 @@ def evaluate_report(
     backend = os.environ.get("MEDGEMMA_BACKEND", _CFG_BACKEND).lower()
 
     # Ensure model is loaded (lazy init) — only needed for transformers backend
-    if backend != "vllm":
+    if backend not in ("vllm", "hf_endpoint"):
         _load_model(base_model_id, lora_path, cache_dir)
 
     # Build the CRIMSON prompt (matches training-time config: no extra
@@ -322,7 +347,9 @@ def evaluate_report(
     )
 
     # Generate
-    if backend == "vllm":
+    if backend == "hf_endpoint":
+        response_text = _generate_hf_endpoint(prompt, max_new_tokens=max_new_tokens)
+    elif backend == "vllm":
         response_text = _generate_vllm(prompt, max_new_tokens=max_new_tokens)
     else:
         response_text = _generate(prompt, max_new_tokens=max_new_tokens)

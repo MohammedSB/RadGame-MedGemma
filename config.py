@@ -13,8 +13,8 @@ LOCALIZE_JSON = os.path.join(DATA_DIR, 'localize_small.json')
 REPORT_METADATA_JSON = os.path.join(DATA_DIR, 'radgame_report.json')
 
 # image directories
-LOCALIZE_IMAGE_BASE = os.path.join(BASE_DIR, 'local_sampled')
-REPORT_IMAGE_BASE = os.path.join(BASE_DIR, 'rex_sampled_additional_cases')
+LOCALIZE_IMAGE_BASE = os.path.join(BASE_DIR, 'localize_data')
+REPORT_IMAGE_BASE = os.path.join(BASE_DIR, 'report_data')
 
 CRIMSON_ROOT = os.environ.get("CRIMSON_ROOT", os.path.join(BASE_DIR, "CRIMSON"))
 # ---------------------------------------------------------------------------
@@ -38,8 +38,9 @@ MEDGEMMA_CACHE_DIR = os.environ.get(
 )
 MEDGEMMA_MAX_NEW_TOKENS = int(os.environ.get("MEDGEMMA_MAX_NEW_TOKENS", "4096"))
 
-# Inference backend: "transformers" (HuggingFace, default) or "vllm" (faster,
-# requires a separate vLLM server running on MEDGEMMA_VLLM_URL).
+# Inference backend: "transformers" (HuggingFace, default), "vllm" (faster,
+# requires a separate vLLM server running on MEDGEMMA_VLLM_URL), or
+# "hf_endpoint" (Hugging Face Inference Endpoint).
 MEDGEMMA_BACKEND = os.environ.get("MEDGEMMA_BACKEND", "transformers")
 
 # vLLM server URL (OpenAI-compatible endpoint).  The model name sent in the
@@ -48,11 +49,18 @@ MEDGEMMA_BACKEND = os.environ.get("MEDGEMMA_BACKEND", "transformers")
 MEDGEMMA_VLLM_URL = os.environ.get("MEDGEMMA_VLLM_URL", "http://localhost:8000/v1")
 MEDGEMMA_VLLM_MODEL = os.environ.get("MEDGEMMA_VLLM_MODEL", "")
 
+# HF Inference Endpoint settings (only used when MEDGEMMA_BACKEND == "hf_endpoint").
+MEDGEMMA_HF_ENDPOINT_URL = os.environ.get(
+    "MEDGEMMA_HF_ENDPOINT_URL",
+    "",  # e.g. "https://xyz.us-east-1.aws.endpoints.huggingface.cloud"
+)
+MEDGEMMA_HF_TOKEN = os.environ.get("MEDGEMMA_HF_TOKEN", "")
+
 # ---------------------------------------------------------------------------
 # Test mode — when True, localize and report always show these fixed cases
 # first (in order) so you can anticipate ground truth during development.
 # ---------------------------------------------------------------------------
-TEST_MODE = True
+TEST_MODE = False
 
 TEST_LOCALIZE_CASES = [
     "1059090736492172890440690893294928964_qnqec4.png",       # 2 findings: interstitial pattern, pleural thickening

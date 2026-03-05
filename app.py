@@ -190,8 +190,12 @@ for item in _localize_list:
     if not cid or cid in _loc_seen:
         continue
     if cid in localize_cases_map:
+        if not os.path.isfile(os.path.join(LOCALIZE_IMAGE_BASE, cid)):
+            continue
         LOCALIZE_ORDER.append(cid)
         _loc_seen.add(cid)
+
+print(f"Localize: {len(LOCALIZE_ORDER)} cases with images on disk")
 
 # In test mode, prepend the chosen test cases so they appear first
 if TEST_MODE and TEST_LOCALIZE_CASES:
@@ -215,7 +219,20 @@ def _is_valid_report_case(case_data):
     comparison = case_data.get('Comparison', '')
     return (not comparison) or len(str(comparison)) < 50
 
-REPORT_ORDER = [cid for cid, cdata in rexgradient_reports.items() if _is_valid_report_case(cdata)]
+def _report_has_images(case_id):
+    case = rexgradient_reports.get(case_id, {})
+    paths = case.get('ImagePath', [])
+    if not paths:
+        return False
+    for img_path in paths:
+        filename = os.path.basename(img_path)
+        if not filename or not os.path.isfile(os.path.join(REPORT_IMAGE_BASE, filename)):
+            return False
+    return True
+
+REPORT_ORDER = [cid for cid, cdata in rexgradient_reports.items()
+                if _is_valid_report_case(cdata) and _report_has_images(cid)]
+print(f"Report: {len(REPORT_ORDER)} cases with images on disk")
 
 # In test mode, prepend the chosen test cases so they appear first
 if TEST_MODE and TEST_REPORT_CASES:
@@ -228,15 +245,12 @@ if TEST_MODE and TEST_REPORT_CASES:
 def _get_ordered_localize_case(index: int):
     if not LOCALIZE_ORDER:
         return None
-    if index < 0 or index >= len(LOCALIZE_ORDER):
-        return None
-    return LOCALIZE_ORDER[index]
+    return LOCALIZE_ORDER[index % len(LOCALIZE_ORDER)]
 
 def _get_ordered_report_case(index: int):
     if not REPORT_ORDER:
         return None
-    if index < 0 or index >= len(REPORT_ORDER):
-        return None
+    index = index % len(REPORT_ORDER)
     return REPORT_ORDER[index]
 
 
