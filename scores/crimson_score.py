@@ -132,7 +132,11 @@ def _generate(prompt: str, max_new_tokens: int = 4096) -> str:
 
 def _generate_hf_endpoint(prompt: str, max_new_tokens: int = 4096,
                           endpoint_url: str = "", token: str = "") -> str:
-    """Call a Hugging Face Inference Endpoint for generation."""
+    """Call a Hugging Face Inference Endpoint for generation.
+
+    Retries on 502/503 (endpoint down or waking from scale-to-zero).
+    """
+    import time
     from huggingface_hub import InferenceClient
 
     url = endpoint_url or _CFG_HF_ENDPOINT_URL
@@ -140,15 +144,34 @@ def _generate_hf_endpoint(prompt: str, max_new_tokens: int = 4096,
     if not url:
         raise RuntimeError("MEDGEMMA_HF_ENDPOINT_URL is not set.")
 
+    # Cap tokens to avoid exceeding context window on the endpoint
+    max_new_tokens = 2048
+
     # Timeout must be long enough for cold-start from scale-to-zero (~10 min)
     client = InferenceClient(model=url, token=api_token or None, timeout=600)
-    response = client.text_generation(
-        prompt,
-        max_new_tokens=max_new_tokens,
-        temperature=0.01,  # TGI doesn't allow exactly 0
-        return_full_text=False,
-    )
-    return response
+
+    max_retries = 12  # up to ~2 minutes of retries for cold start
+    for attempt in range(max_retries):
+        try:
+            response = client.text_generation(
+                prompt,
+                max_new_tokens=max_new_tokens,
+                temperature=0.01,  # TGI doesn't allow exactly 0
+                return_full_text=False,
+            )
+            return response
+        except Exception as e:
+            err_msg = str(e).lower()
+            is_retryable = ("502" in err_msg or "503" in err_msg
+                            or "service unavailable" in err_msg
+                            or "bad gateway" in err_msg)
+            if is_retryable and attempt < max_retries - 1:
+                wait = 10
+                print(f"[hf_endpoint] Server unavailable "
+                      f"(attempt {attempt+1}/{max_retries}), retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
 
 
 def _generate_vllm(prompt: str, max_new_tokens: int = 4096,
@@ -345,6 +368,10 @@ def evaluate_report(
         include_attribute_guidelines=False,
         include_context_guidelines=False,
     )
+
+    prompt_words = len(prompt.split())
+    prompt_chars = len(prompt)
+    print(f"[crimson_score] Prompt stats: {prompt_words} words, {prompt_chars} chars, ~{prompt_chars // 4} estimated tokens")
 
     # Generate
     if backend == "hf_endpoint":
